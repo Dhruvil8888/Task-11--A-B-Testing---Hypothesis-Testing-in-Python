@@ -1,32 +1,25 @@
-Task 10: Python EDA — Summary Statistics & Outlier Detection
+Task 11: A/B Testing — Hypothesis Testing in Python
 📌 Project Overview
 
-This project demonstrates Exploratory Data Analysis (EDA) using Python to:
-
-Understand dataset structure
-
-Summarize data
-
-Detect and handle outliers
-
-Analyze correlations
-It reflects a real analyst workflow before modeling or reporting.
+This project demonstrates how to perform A/B testing using Python to make data-driven product decisions.
+It follows the full statistical workflow:
+hypothesis → test → interpretation → business recommendation.
 
 📂 Dataset
 
 One of the following datasets was used:
 
-House Prices
+Marketing A/B Testing Dataset
 
-Students Performance
+E-commerce Conversion Dataset
 
-Credit Card Fraud (sample)
+Each dataset contains a Control group (A) and a Test group (B).
 
 🛠 Tools & Libraries
 
 Primary: Google Colab
 
-Alternatives: Jupyter / Kaggle Notebook
+Alternative: Excel (basic t-test)
 
 Libraries:
 
@@ -34,70 +27,86 @@ pandas
 
 numpy
 
+scipy
+
 matplotlib
 
 📁 Repository Structure
-Task_10_Python_EDA/
+Task_11_AB_Testing/
 │
-├── task10_eda.ipynb
-├── cleaned_dataset.csv
-├── eda_findings.txt
+├── task11_abtest.ipynb
+├── ab_test_summary.csv
+├── final_recommendation.txt
 └── README.md
 
 🔹 1. Load & Inspect Data
 import pandas as pd
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("house_prices.csv")
-
-df.shape
-df.info()
+df = pd.read_csv("ab_test_data.csv")
 df.head()
 
-🔹 2. Descriptive Statistics
-df.describe()
 
-🔹 3. Missing Values Percentage
-missing_pct = (df.isnull().sum() / len(df)) * 100
-missing_pct.sort_values(ascending=False)
+Identify groups:
 
-🔹 4. Distribution Plots
-plt.hist(df['SalePrice'], bins=30)
-plt.title("Sale Price Distribution")
+df['group'].value_counts()
+
+🔹 2. Define Hypothesis
+
+H₀ (Null): No difference between Control and Test
+
+H₁ (Alternative): Test group performs better
+
+α = 0.05
+
+🔹 3. Calculate Group Metrics
+control = df[df['group'] == 'control']['conversion']
+test = df[df['group'] == 'test']['conversion']
+
+control.mean(), test.mean()
+
+🔹 4. Run Hypothesis Test (t-test)
+t_stat, p_value = stats.ttest_ind(test, control, equal_var=False)
+p_value
+
+🔹 5. Interpret Significance
+alpha = 0.05
+if p_value < alpha:
+    print("Reject H0 – Significant difference")
+else:
+    print("Fail to reject H0 – No significant difference")
+
+🔹 6. Confidence Interval
+diff = test.mean() - control.mean()
+se = np.sqrt(test.var()/len(test) + control.var()/len(control))
+
+ci_low = diff - 1.96 * se
+ci_high = diff + 1.96 * se
+
+ci_low, ci_high
+
+🔹 7. Visualization
+plt.boxplot([control, test], labels=['Control', 'Test'])
+plt.title("A/B Test Conversion Distribution")
 plt.show()
 
-plt.boxplot(df['SalePrice'])
-plt.title("Sale Price Boxplot")
-plt.show()
+🔹 8. Export Summary
+summary = pd.DataFrame({
+    'Group': ['Control', 'Test'],
+    'Mean Conversion': [control.mean(), test.mean()]
+})
 
-🔹 5. Outlier Detection (IQR Method)
-Q1 = df['SalePrice'].quantile(0.25)
-Q3 = df['SalePrice'].quantile(0.75)
-IQR = Q3 - Q1
+summary.to_csv("ab_test_summary.csv", index=False)
 
-lower = Q1 - 1.5 * IQR
-upper = Q3 + 1.5 * IQR
+📈 Business Interpretation (Example)
 
-df['outlier_flag'] = np.where(
-    (df['SalePrice'] < lower) | (df['SalePrice'] > upper), 1, 0
-)
+Test group shows higher conversion than Control
 
-🔹 6. Handle Outliers (Capping)
-df['SalePrice'] = np.where(df['SalePrice'] > upper, upper, df['SalePrice'])
-df['SalePrice'] = np.where(df['SalePrice'] < lower, lower, df['SalePrice'])
+p-value < 0.05 → statistically significant
 
-🔹 7. Correlation Matrix
-corr = df.corr()
-corr['SalePrice'].sort_values(ascending=False)
+Confidence interval does not include 0
 
-🔹 8. Save Cleaned Dataset
-df.to_csv("cleaned_dataset.csv", index=False)
-
-📈 EDA Findings (Example)
-
-SalePrice is right-skewed with extreme high-value outliers.
-
-OverallQual has the strongest correlation with SalePrice.
-
-Outliers were capped to preserve data while reducing skew.
+Recommendation:
+Deploy the Test version to all users.
